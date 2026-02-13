@@ -1,0 +1,2 @@
+python-keycloak==7.0.3
+
