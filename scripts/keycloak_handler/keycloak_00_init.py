@@ -181,7 +181,7 @@ def configure_realm_token_lifetime(keycloak_admin: KeycloakAdmin, realm_name: st
         return False
 
 
-def create_client(keycloak_admin: KeycloakAdmin, realm_name: str, client_id: str) -> Optional[Tuple[str, str]]:
+def create_client(keycloak_admin: KeycloakAdmin, realm_name: str, client_id: str) -> Optional[Tuple[str, str, str]]:
     """
     Create a client in the specified realm.
 
@@ -191,7 +191,7 @@ def create_client(keycloak_admin: KeycloakAdmin, realm_name: str, client_id: str
         client_id: Client ID to create
 
     Returns:
-        Tuple of (client_id, client_secret) or None if failed
+        Tuple of (client_id, client_secret, client_uuid) or None if failed
     """
     print_info(f"Création du client '{client_id}' dans le realm '{realm_name}'...")
 
@@ -204,7 +204,7 @@ def create_client(keycloak_admin: KeycloakAdmin, realm_name: str, client_id: str
             print_warning(f"Le client '{client_id}' existe déjà")
             # Get the secret
             secret = keycloak_admin.get_client_secrets(existing_client['id'])
-            return (client_id, secret['value'])
+            return (client_id, secret['value'], existing_client['id'])
 
         # Create client
         client_payload = {
@@ -227,7 +227,7 @@ def create_client(keycloak_admin: KeycloakAdmin, realm_name: str, client_id: str
         secret = keycloak_admin.get_client_secrets(client_uuid)
         print_success(f"Client secret récupéré")
 
-        return (client_id, secret['value'])
+        return (client_id, secret['value'], client_uuid)
 
     except KeycloakError as e:
         print_error(f"Erreur lors de la création du client: {str(e)}")
@@ -270,6 +270,54 @@ def store_client_credentials_in_vault(client_id: str, client_secret: str, realm_
 
     except subprocess.CalledProcessError as e:
         print_error(f"Erreur lors du stockage dans Vault: {e.stderr}")
+        return False
+    except Exception as e:
+        print_error(f"Erreur inattendue: {str(e)}")
+        return False
+
+
+def configure_client_audience_mapper(keycloak_admin: KeycloakAdmin, client_uuid: str, client_id: str) -> bool:
+    """
+    Configure audience mapper for the client to include the client_id in the 'aud' claim.
+
+    Args:
+        keycloak_admin: Authenticated KeycloakAdmin instance
+        client_uuid: Client UUID (internal ID)
+        client_id: Client ID (e.g., 'garage')
+
+    Returns:
+        True if successful, False otherwise
+    """
+    print_info(f"Configuration de l'audience mapper pour le client '{client_id}'...")
+
+    try:
+        # Check if mapper already exists
+        mappers = keycloak_admin.get_mappers_from_client(client_uuid)
+        existing_mapper = next((m for m in mappers if m.get('name') == 'audience-mapper'), None)
+
+        if existing_mapper:
+            print_warning(f"Le mapper 'audience-mapper' existe déjà")
+            return True
+
+        # Create audience mapper
+        mapper_payload = {
+            "name": "audience-mapper",
+            "protocol": "openid-connect",
+            "protocolMapper": "oidc-audience-mapper",
+            "consentRequired": False,
+            "config": {
+                "included.client.audience": client_id,
+                "id.token.claim": "false",
+                "access.token.claim": "true"
+            }
+        }
+
+        keycloak_admin.add_mapper_to_client(client_uuid, mapper_payload)
+        print_success(f"Audience mapper configuré (audience: {client_id})")
+        return True
+
+    except KeycloakError as e:
+        print_error(f"Erreur lors de la configuration du mapper: {str(e)}")
         return False
     except Exception as e:
         print_error(f"Erreur inattendue: {str(e)}")
@@ -578,7 +626,12 @@ def main():
         print_error(f"Échec de la création du client '{client_id}'")
         sys.exit(1)
 
-    client_id_value, client_secret = client_credentials
+    client_id_value, client_secret, client_uuid = client_credentials
+
+    # Step 7.5: Configure audience mapper
+    print_header(f"Configuration de l'audience mapper")
+    if not configure_client_audience_mapper(garage_admin, client_uuid, client_id_value):
+        print_warning("Échec de la configuration de l'audience mapper")
 
     # Step 8: Store client credentials in Vault
     if not store_client_credentials_in_vault(client_id_value, client_secret, realm_name, vault_token):
@@ -637,6 +690,7 @@ def main():
     print(f"  • Client ID:      {Colors.GREEN}{client_id_value}{Colors.END}")
     print(f"  • Utilisateurs:   {Colors.GREEN}{len(user_credentials)}{Colors.END}")
     print(f"  • Token lifetime: {Colors.GREEN}6 mois{Colors.END}")
+    print(f"  • Audience:       {Colors.GREEN}{client_id_value}{Colors.END}")
     print(f"\n{Colors.BOLD}Données stockées dans Vault:{Colors.END}")
     print(f"  • Client credentials: secret/keycloak/realms/{realm_name}/credentials")
     print(f"  • User credentials:   secret/keycloak/realms/{realm_name}/users/{{email}}/")

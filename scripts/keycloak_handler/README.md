@@ -166,3 +166,170 @@ Credentials du nouvel administrateur:
 ⚠️  IMPORTANT: Sauvegardez ces credentials en lieu sûr!
 ```
 
+## keycloak_01_secret.py
+
+Script de synchronisation du client secret depuis Vault vers Keycloak.
+
+### Description
+
+Ce script lit le `client_secret` stocké dans Vault et le met à jour dans Keycloak pour le client `garage` du realm `garage`.
+
+### Utilisation
+
+```bash
+cd scripts/keycloak_handler
+python3 keycloak_01_secret.py
+```
+
+### Fonctionnalités
+
+1. ✅ Connexion à Keycloak (realm `garage`)
+2. ✅ Lecture du `client_secret` depuis Vault (`secret/keycloak/realms/garage/credentials`)
+3. ✅ Recherche du client `garage` dans Keycloak
+4. ✅ Mise à jour du secret dans Keycloak
+
+### Cas d'usage
+
+- Synchroniser le secret après une modification manuelle dans Vault
+- Restaurer le secret après une réinitialisation
+- Garantir la cohérence entre Vault et Keycloak
+
+## keycloak_02_add_audience.py
+
+Script pour ajouter l'audience mapper au client `garage`.
+
+### Description
+
+Ce script configure un mapper d'audience pour le client `garage` afin que tous les tokens JWT générés incluent `"aud": ["garage"]` dans leur payload.
+
+### Utilisation
+
+```bash
+cd scripts/keycloak_handler
+python3 keycloak_02_add_audience.py
+```
+
+### Fonctionnalités
+
+1. ✅ Connexion à Keycloak (realm `garage`)
+2. ✅ Recherche du client `garage`
+3. ✅ Vérification si le mapper existe déjà
+4. ✅ Ajout du mapper d'audience avec configuration :
+   - `included.client.audience`: `garage`
+   - `access.token.claim`: `true`
+   - `id.token.claim`: `false`
+
+### Résultat
+
+Après exécution, tous les nouveaux tokens générés pour les utilisateurs du realm `garage` incluront :
+
+```json
+{
+  "aud": ["garage"],
+  "sub": "user-uuid",
+  "name": "User Name",
+  ...
+}
+```
+
+### Note importante
+
+⚠️ **Les tokens existants ne seront pas modifiés.** Les utilisateurs devront :
+- Se reconnecter pour obtenir un nouveau token
+- Ou attendre l'expiration de leur token actuel
+
+Pour forcer la regénération de tous les tokens utilisateurs, relancez `keycloak_00_init.py` (étape de génération des tokens).
+
+## keycloak_03_renew_tokens.py
+
+Script pour renouveler tous les tokens des utilisateurs du realm `garage`.
+
+### Description
+
+Ce script lit automatiquement la liste des utilisateurs depuis Vault, récupère leurs mots de passe, génère de nouveaux tokens JWT et les stocke dans Vault.
+
+### Utilisation
+
+```bash
+cd scripts/keycloak_handler
+python3 keycloak_03_renew_tokens.py
+```
+
+### Fonctionnalités
+
+1. ✅ Connexion à Vault avec le root token
+2. ✅ Récupération des credentials du client `garage` depuis Vault
+3. ✅ Liste automatique de tous les utilisateurs dans `/secret/keycloak/realms/garage/users/`
+4. ✅ Pour chaque utilisateur :
+   - Récupération du mot de passe depuis Vault
+   - Génération d'un nouveau token JWT via Keycloak
+   - Stockage du nouveau token dans Vault (en conservant le mot de passe)
+5. ✅ Rapport détaillé avec nombre de succès/échecs
+
+### Cas d'usage
+
+- **Après ajout de l'audience mapper** : Regénérer tous les tokens pour qu'ils incluent `"aud": ["garage"]`
+- **Après modification de la configuration Keycloak** : Appliquer les changements à tous les tokens
+- **Rotation périodique des tokens** : Renouveler les tokens pour des raisons de sécurité
+- **Après un incident** : Invalider et regénérer tous les tokens
+
+### Output exemple
+
+```bash
+============================================================
+🔐 Keycloak - Renouvellement des tokens utilisateurs
+============================================================
+
+ℹ️  Saisie du root token Vault...
+✅ Token saisi (longueur: 28 caractères)
+
+============================================================
+Récupération des credentials du client
+============================================================
+
+ℹ️  Récupération des credentials du client depuis Vault...
+✅ Client credentials récupérés (client_id: garage)
+
+============================================================
+Récupération de la liste des utilisateurs
+============================================================
+
+ℹ️  Récupération de la liste des utilisateurs depuis Vault...
+✅ 13 utilisateurs trouvés dans Vault
+
+============================================================
+Renouvellement des tokens pour 13 utilisateur(s)
+============================================================
+
+ℹ️  Traitement de lilivet29@gmail.com...
+✅ Token récupéré (longueur: 1234 caractères)
+✅ Token stocké dans Vault pour lilivet29@gmail.com
+
+ℹ️  Traitement de ineskopp35400@gmail.com...
+✅ Token récupéré (longueur: 1234 caractères)
+✅ Token stocké dans Vault pour ineskopp35400@gmail.com
+
+[...]
+
+============================================================
+✅ Renouvellement des tokens terminé!
+============================================================
+
+Récapitulatif:
+  • Realm:             garage
+  • Client ID:         garage
+  • Utilisateurs:      13
+  • Tokens renouvelés: 13
+
+Les tokens ont été renouvelés et stockés dans Vault.
+Les nouveaux tokens incluent l'audience 'garage' si le mapper est configuré.
+```
+
+### Note importante
+
+⚠️ Ce script nécessite que :
+- Les utilisateurs existent dans Keycloak
+- Les mots de passe soient stockés dans Vault
+- Le client `garage` soit configuré dans Keycloak
+- L'audience mapper soit configuré si vous voulez `"aud": ["garage"]` dans les tokens
+
