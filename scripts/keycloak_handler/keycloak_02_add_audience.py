@@ -63,7 +63,7 @@ def connect_to_keycloak(username: str, password: str, realm_name: str = "master"
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
         keycloak_admin = KeycloakAdmin(
-            server_url="https://keycloak.amazone.lan/auth/",
+            server_url="https://keycloak.amazone.lan/",
             username=username,
             password=password,
             realm_name=realm_name,

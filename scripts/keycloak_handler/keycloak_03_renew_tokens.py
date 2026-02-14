@@ -236,7 +236,7 @@ def get_user_token(email: str, password: str, realm_name: str, client_id: str, c
 
         # Create KeycloakOpenID instance
         keycloak_openid = KeycloakOpenID(
-            server_url="https://keycloak.amazone.lan/auth/",
+            server_url="https://keycloak.amazone.lan/",
             realm_name=realm_name,
             client_id=client_id,
             client_secret_key=client_secret,
