@@ -14,3 +14,7 @@
 .venv
 dev/
 .idea
+
+# Cache Python et bytecode générés
+__pycache__/
+*.py[cod]
