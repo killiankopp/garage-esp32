@@ -54,7 +54,7 @@ L'authentification suit le principe de responsabilité unique (SRP) avec les com
 ### 4. WebServerHandler (modifié)
 
 - **Responsabilité** : Serveur HTTP avec protection des routes sensibles
-- Intègre l'authentification pour les routes `/gate/open` et `/gate/close`
+- Intègre l'authentification pour les routes `/gate/open`, `/gate/close` et `/gate/pulse`
 - Nouvelle route `/auth/info` pour vérifier la configuration
 
 ## Configuration
@@ -96,14 +96,15 @@ pio run
 
 ### Routes protégées (nécessitent un token JWT)
 
-- `POST /gate/open` - Ouvrir le garage
-- `POST /gate/close` - Fermer le garage
+- `POST /gate/open` - Demander une ouverture selon l'etat capteur
+- `POST /gate/close` - Demander une fermeture selon l'etat capteur
+- `POST /gate/pulse` - Envoyer une impulsion relais sans deduire de direction
 
 ### Format des requêtes authentifiées
 
 ```bash
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-     http://esp32-ip/gate/open
+     http://esp32-ip/gate/pulse
 ```
 
 ### Exemples de réponses
@@ -140,7 +141,7 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   "keycloak_server": "10.0.0.48:5990",
   "realm": "garage",
   "client_id": "garage-client",
-  "protected_routes": ["/gate/open", "/gate/close"]
+  "protected_routes": ["/gate/open", "/gate/close", "/gate/pulse"]
 }
 ```
 

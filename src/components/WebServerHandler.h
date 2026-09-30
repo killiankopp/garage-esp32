@@ -31,6 +31,7 @@ private:
     void handleAuthInfo();
     void handleGateOpen();
     void handleGateClose();
+    void handleGatePulse();
     void handleGateStatus();
     
     // Helper methods

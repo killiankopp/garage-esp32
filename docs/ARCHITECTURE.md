@@ -98,8 +98,9 @@ pio run
 - `GET /` - Status général
 - `GET /health` - Vérification de santé
 - `GET /gate/status` - État détaillé du portail (JSON)
-- `POST /gate/open` - Ouvrir le portail
-- `POST /gate/close` - Fermer le portail
+- `POST /gate/open` - Demander une ouverture selon l'etat capteur
+- `POST /gate/close` - Demander une fermeture selon l'etat capteur
+- `POST /gate/pulse` - Envoyer une impulsion relais sans deduire de direction
 
 ## Exemple de Réponse JSON
 
