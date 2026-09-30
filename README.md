@@ -85,6 +85,13 @@ Options utiles :
 
 ## 🛠 Configuration matérielle
 
+La [fiche matériel et redémarrage](docs/HARDWARE.md) contient le lien d'achat,
+la vue légendée de la **carte installée, avec transformateur jaune**.
+Elle distingue **EN (reset, repère 7, bouton inférieur gauche)** de
+**IO0 (programmation, repère 6, juste au-dessus)** dans l'orientation fournie.
+Les photos constructeur d'une autre variante DC sont conservées comme
+comparaison, sans en transposer les caractéristiques d'alimentation.
+
 ### Connexions ESP32
 
 | Composant | Pin ESP32 | Description |
@@ -117,8 +124,9 @@ Toutes les routes retournent du JSON avec le même format.
 |-------|---------|-------------|
 | `/` | GET | Status de base |
 | `/health` | GET | Health check |
-| `/gate/open` | GET | Ouvrir le portail |
-| `/gate/close` | GET | Fermer le portail |
+| `/gate/open` | GET | Demander une ouverture selon l'etat capteur |
+| `/gate/close` | GET | Demander une fermeture selon l'etat capteur |
+| `/gate/pulse` | GET | Envoyer une impulsion relais sans deduire de direction |
 | `/gate/status` | GET | État détaillé du portail |
 
 ### Status possibles
@@ -321,11 +329,8 @@ garage-v2/
 # Status du portail
 curl http://[IP_ESP32]/gate/status
 
-# Ouvrir le portail
-curl http://[IP_ESP32]/gate/open
-
-# Fermer le portail
-curl http://[IP_ESP32]/gate/close
+# Envoyer une impulsion relais
+curl http://[IP_ESP32]/gate/pulse
 ```
 
 ### Comportements automatiques

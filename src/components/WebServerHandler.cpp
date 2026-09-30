@@ -36,6 +36,7 @@ void WebServerHandler::setupRoutes() {
     _server.on("/auth/info", [this]() { handleAuthInfo(); });
     _server.on("/gate/open", [this]() { handleGateOpen(); });
     _server.on("/gate/close", [this]() { handleGateClose(); });
+    _server.on("/gate/pulse", [this]() { handleGatePulse(); });
     _server.on("/gate/status", [this]() { handleGateStatus(); });
 }
 
@@ -55,7 +56,7 @@ void WebServerHandler::handleAuthInfo() {
         json += ",\"keycloak_server\":\"" + _authConfig->getKeycloakServerUrl() + "\"";
         json += ",\"realm\":\"" + _authConfig->getKeycloakRealm() + "\"";
         json += ",\"client_id\":\"" + _authConfig->getKeycloakClientId() + "\"";
-        json += ",\"protected_routes\":[\"/gate/open\",\"/gate/close\"]";
+        json += ",\"protected_routes\":[\"/gate/open\",\"/gate/close\",\"/gate/pulse\"]";
     }
     
     json += "}";
@@ -102,6 +103,21 @@ void WebServerHandler::handleGateClose() {
     }
     
     // Return current status in JSON format
+    handleGateStatus();
+}
+
+void WebServerHandler::handleGatePulse() {
+    bool authenticated = requireAuthentication();
+
+    logGateAction("pulse", authenticated);
+
+    if (!authenticated) {
+        return;
+    }
+
+    _gateController->triggerRelay();
+
+    // A pulse actuator has no reliable direction: return sensors as observed.
     handleGateStatus();
 }
 
